@@ -9,19 +9,19 @@ const JWT = process.env.JWT || "shhh";
 
 const createTables = async () => {
   const SQL = `
-  DROP TABLE IF EXISTS user_cart;
-  DROP TABLE IF EXISTS user_order;
+  DROP TABLE IF EXISTS cart_items;
+  DROP TABLE IF EXISTS carts;
+  DROP TABLE IF EXISTS orders;
   DROP TABLE IF EXISTS products;
   DROP TABLE IF EXISTS users;
-  DROP TABLE IF EXISTS skills;
-  
+
   CREATE TABLE users (
     id UUID PRIMARY KEY,
     username VARCHAR(20) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     role VARCHAR(255) NOT NULL
   );
-  
+
   CREATE TABLE products (
     id UUID PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
@@ -31,32 +31,33 @@ const createTables = async () => {
     image VARCHAR(255)
   );
 
-  CREATE TABLE cart (
+  CREATE TABLE carts (
     id UUID PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE
   );
-  
-  CREATE TABLE user_cart (
+
+  CREATE TABLE cart_items (
     id UUID PRIMARY KEY,
-    user_id UUID REFERENCES users(id) NOT NULL,
-    cart_id UUID REFERENCES cart(id) NOT NULL,
-    CONSTRAINT unique_user_id_cart_id UNIQUE (user_id, cart_id)
+    cart_id UUID REFERENCES carts(id) ON DELETE CASCADE,
+    product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+    quantity INT NOT NULL,
+    CONSTRAINT unique_cart_product UNIQUE (cart_id, product_id)
   );
-  
-  CREATE TABLE user_order (
+
+  CREATE TABLE orders (
     id UUID PRIMARY KEY,
     user_id UUID REFERENCES users(id) NOT NULL,
     date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );  
-  `;
+  );
+`;
   await client.query(SQL);
 };
 
 const createUser = async ({ username, password }) => {
   const SQL = `
-    INSERT INTO users(id, username, password) VALUES($1, $2, $3) RETURNING *
+    INSERT INTO users(id, username, password, role) VALUES($1, $2, $3, $4) RETURNING *
   `;
   const response = await client.query(SQL, [
     uuid.v4(),
@@ -95,7 +96,7 @@ const authenticate = async ({ username, password }) => {
 
 const createUser_Cart = async ({ user_id, skill_id }) => {
   const SQL = `
-    INSERT INTO user_skills(id, user_id, skill_id) VALUES ($1, $2, $3) RETURNING * 
+    INSERT INTO user_cart(id, user_id, skill_id) VALUES ($1, $2, $3) RETURNING * 
   `;
   const response = await client.query(SQL, [uuid.v4(), user_id, skill_id]);
   return response.rows[0];
@@ -132,7 +133,7 @@ const fetchUser_cart = async (user_id) => {
 const deleteUser_Cart = async ({ user_id, id }) => {
   const SQL = `
     DELETE
-    FROM user_skills
+    FROM user_cart
     WHERE user_id = $1 AND id = $2
   `;
   await client.query(SQL, [user_id, id]);
