@@ -19,9 +19,9 @@ const createTables = async () => {
     id UUID PRIMARY KEY,
     username VARCHAR(20) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
-    role VARCHAR(255) NOT NULL
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-    modifided_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    role VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE TABLE products (
@@ -40,7 +40,7 @@ const createTables = async () => {
 
   CREATE TABLE cart_items (
     id UUID PRIMARY KEY,
-    cart_id UUID REFERENCES carts(id) ON DELETE CASCADE,
+    cart_id UUID REFERENCES cart(id) ON DELETE CASCADE,
     product_id UUID REFERENCES products(id) ON DELETE CASCADE,
     quantity INT NOT NULL,
     CONSTRAINT unique_cart_product UNIQUE (cart_id, product_id)
@@ -50,8 +50,7 @@ const createTables = async () => {
     id UUID PRIMARY KEY,
     user_id UUID REFERENCES users(id) NOT NULL,
     date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    status VARCHAR(255) NOT NULL
   );
 `;
   await client.query(SQL);
