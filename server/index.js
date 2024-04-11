@@ -31,7 +31,7 @@ const isLoggedIn = async (req, res, next) => {
   }
 };
 
-app.post("users/register", async (req, res) => {
+app.post("/users/register", async (req, res) => {
   try {
     const user = await createUser(req.body);
     res.status(201).json(user);
@@ -107,16 +107,84 @@ app.use((err, req, res, next) => {
   res.status(status).send({ error: err.message });
 });
 
+const seedUsers = async () => {
+  const users = [
+    { username: "user1", password: "pass1", role: "customer" },
+    { username: "user2", password: "pass2", role: "admin" },
+  ];
+  for (const user of users) {
+    await createUser({
+      username: user.username,
+      password: user.password, // Ensure passwords are hashed in the `createUser` function
+      role: user.role,
+    });
+  }
+};
+
+const seedProducts = async () => {
+  const products = [
+    {
+      name: "Laptop",
+      description: "High performance laptop",
+      price: 999.99,
+      stock_quantity: 10,
+    },
+    {
+      name: "Smartphone",
+      description: "Latest model smartphone",
+      price: 699.99,
+      stock_quantity: 30,
+    },
+  ];
+  for (const product of products) {
+    await createProduct(product);
+  }
+};
+
+const seedCarts = async () => {
+  const carts = [{ user_id: "UUID of user1" }, { user_id: "UUID of user2" }];
+  for (const cart of carts) {
+    await createUserCart(cart.user_id);
+  }
+};
+
+const seedCartItems = async () => {
+  const cartItems = [
+    { cart_id: "UUID of cart1", product_id: "UUID of product1", quantity: 1 },
+    { cart_id: "UUID of cart2", product_id: "UUID of product2", quantity: 2 },
+  ];
+  for (const item of cartItems) {
+    await createCartItem(item.cart_id, item.product_id, item.quantity);
+  }
+};
+
+const seedOrders = async () => {
+  const orders = [
+    { user_id: "UUID of user1", status: "Shipped" },
+    { user_id: "UUID of user2", status: "Delivered" },
+  ];
+  for (const order of orders) {
+    await createOrder(order.user_id, order.status);
+  }
+};
+
 const init = async () => {
   const port = process.env.PORT || 3000;
   await client.connect();
-  console.log("connected to database");
-
+  console.log("Connected to the database.");
+  // Create Tables
   await createTables();
-  console.log("tables created");
-  console.log(await fetchUsers());
-  console.log(await fetchProducts());
-  app.listen(port, () => console.log(`listening on port ${port}`));
+  console.log("Tables created.");
+
+  // Seed the database
+  await seedUsers();
+  await seedProducts();
+  await seedCarts();
+  await seedCartItems();
+  await seedOrders();
+  console.log("Database seeded.");
+
+  app.listen(port, () => console.log(`Listening on port ${port}`));
 };
 
 init();
