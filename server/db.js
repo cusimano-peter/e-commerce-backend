@@ -5,7 +5,7 @@ const client = new pg.Client(
 const uuid = require("uuid");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const JWT = process.env.JWT || "shhh";
+const JWT = process.env.JWT || "secret";
 
 const createTables = async () => {
   const SQL = `
@@ -20,6 +20,8 @@ const createTables = async () => {
     username VARCHAR(20) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     role VARCHAR(255) NOT NULL
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    modifided_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE TABLE products (
@@ -31,7 +33,7 @@ const createTables = async () => {
     image VARCHAR(255)
   );
 
-  CREATE TABLE carts (
+  CREATE TABLE cart (
     id UUID PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE
   );
@@ -55,7 +57,7 @@ const createTables = async () => {
   await client.query(SQL);
 };
 
-const createUser = async ({ username, password }) => {
+const createUser = async ({ username, password, role = "user" }) => {
   const SQL = `
     INSERT INTO users(id, username, password, role) VALUES($1, $2, $3, $4) RETURNING *
   `;
@@ -63,15 +65,29 @@ const createUser = async ({ username, password }) => {
     uuid.v4(),
     username,
     await bcrypt.hash(password, 5),
+    role,
   ]);
   return response.rows[0];
 };
 
-const createProduct = async ({ name }) => {
+const createProduct = async ({
+  name,
+  description,
+  price,
+  stock_quantity,
+  image,
+}) => {
   const SQL = `
     INSERT INTO products(id, name, description, price, stock_quantity, image) VALUES ($1, $2, $3, $4, $5, $6) RETURNING * 
   `;
-  const response = await client.query(SQL, [uuid.v4(), name]);
+  const response = await client.query(SQL, [
+    uuid.v4(),
+    name,
+    description,
+    price,
+    stock_quantity,
+    image,
+  ]);
   return response.rows[0];
 };
 
@@ -94,11 +110,11 @@ const authenticate = async ({ username, password }) => {
   return { token };
 };
 
-const createUser_Cart = async ({ user_id, skill_id }) => {
+const createUserCart = async ({ user_id }) => {
   const SQL = `
-    INSERT INTO user_cart(id, user_id, skill_id) VALUES ($1, $2, $3) RETURNING * 
+    INSERT INTO carts(id, user_id,) VALUES ($1, $2) RETURNING * 
   `;
-  const response = await client.query(SQL, [uuid.v4(), user_id, skill_id]);
+  const response = await client.query(SQL, [uuid.v4(), user_id]);
   return response.rows[0];
 };
 
@@ -114,29 +130,30 @@ const fetchUsers = async () => {
 const fetchProducts = async () => {
   const SQL = `
     SELECT *
-    FROM skills
+    FROM products
   `;
   const response = await client.query(SQL);
   return response.rows;
 };
 
-const fetchUser_cart = async (user_id) => {
+const fetchUserCart = async (user_id) => {
   const SQL = `
-    SELECT *
-    FROM user_skills
-    WHERE user_id = $1
+  SELECT c.id, ci.product_id, ci.quantity
+  FROM carts c
+  JOIN cart_items ci ON c.id = ci.cart_id
+  WHERE c.user_id = $1
   `;
   const response = await client.query(SQL, [user_id]);
   return response.rows;
 };
 
-const deleteUser_Cart = async ({ user_id, id }) => {
+const deleteUserCart = async ({ user_id, cart_id }) => {
   const SQL = `
     DELETE
-    FROM user_cart
+    FROM carts
     WHERE user_id = $1 AND id = $2
   `;
-  await client.query(SQL, [user_id, id]);
+  await client.query(SQL, [user_id, cart_id]);
 };
 
 const findUserByToken = async (token) => {
@@ -167,7 +184,12 @@ module.exports = {
   client,
   createTables,
   createUser,
+  createProduct,
+  createUserCart,
   fetchUsers,
+  fetchProducts,
+  fetchUserCart,
+  deleteUserCart,
   authenticate,
   findUserByToken,
 };
